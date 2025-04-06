@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 // middleware
 app.use(cors());
 app.use(express.json());
@@ -21,9 +21,30 @@ async function run() {
   try {
     await client.connect();
     console.log("mongodb connected");
+    const database = client.db("volunteer_DB");
+    const volunteerCollection = database.collection("volunteer");
 
     app.get("/", async (req, res) => {
       res.send("server is running");
+    });
+
+    // add volunteer
+    app.post("/add_volunteer", async (req, res) => {
+      const volunteerData = req.body;
+      const result = await volunteerCollection.insertOne(volunteerData);
+      res.send(result);
+    });
+    // get specific volunteer data
+    app.get("/volunteer/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await volunteerCollection.findOne(query);
+      res.send(result);
+    });
+    // get all volunteer
+    app.get("/volunteer", async (req, res) => {
+      const result = await volunteerCollection.find().toArray();
+      res.send(result);
     });
 
     app.listen(port, () => {
