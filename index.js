@@ -23,11 +23,27 @@ async function run() {
     console.log("mongodb connected");
     const database = client.db("volunteer_DB");
     const volunteerCollection = database.collection("volunteer");
+    const requestCollection = database.collection("request");
 
     app.get("/", async (req, res) => {
       res.send("server is running");
     });
 
+    //
+    app.patch("/volunteers/decrease/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $inc: { volunteersNeeded: -1 } };
+      const result = await requestCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    //
+    app.post("/volunteers/request", async (req, res) => {
+      const requestData = req.body;
+      const result = await requestCollection.insertOne(requestData);
+      res.send(result);
+    });
     // add volunteer
     app.post("/add_volunteer", async (req, res) => {
       const volunteerData = req.body;
