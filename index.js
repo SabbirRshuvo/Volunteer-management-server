@@ -85,6 +85,40 @@ async function run() {
       const result = await volunteerCollection.insertOne(volunteerData);
       res.send(result);
     });
+
+    // update
+
+    app.put("/volunteer/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedPost = req.body;
+      {
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            thumbnail: updatedPost.thumbnail,
+            title: updatedPost.title,
+            description: updatedPost.description,
+            category: updatedPost.category,
+            location: updatedPost.location,
+            volunteersNeeded: updatedPost.volunteersNeeded,
+            deadline: updatedPost.deadline,
+            organizerName: updatedPost.organizerName,
+            organizerEmail: updatedPost.organizerEmail,
+          },
+        };
+        const result = await volunteerCollection.updateOne(filter, updateDoc);
+
+        res.send(result);
+      }
+    });
+    // delete data
+    app.delete("/volunteer/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await volunteerCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
     // get specific volunteer data
     app.get("/volunteer/:id", async (req, res) => {
       const id = req.params.id;
