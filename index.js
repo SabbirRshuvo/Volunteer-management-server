@@ -34,12 +34,36 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = { $inc: { volunteersNeeded: -1 } };
-      const result = await requestCollection.updateOne(filter, updateDoc);
+      const result = await volunteerCollection.updateOne(filter, updateDoc);
       res.send(result);
+    });
+
+    app.get("/volunteers/requested", async (req, res) => {
+      const { email, postId } = req.query;
+
+      const existing = await requestCollection.findOne({
+        volunteerEmail: email,
+        volunteerPostId: postId,
+      });
+
+      res.send({ requested: !!existing });
     });
 
     //
     app.post("/volunteers/request", async (req, res) => {
+      const { volunteerEmail, volunteerPostId } = req.body;
+
+      const existing = await requestCollection.findOne({
+        volunteerEmail,
+        volunteerPostId,
+      });
+
+      if (existing) {
+        return res
+          .status(400)
+          .send({ message: "You have already requested for this post." });
+      }
+
       const requestData = req.body;
       const result = await requestCollection.insertOne(requestData);
       res.send(result);
