@@ -49,6 +49,17 @@ async function run() {
       res.send({ requested: !!existing });
     });
 
+    // get volunteers requests made by the logged in user
+    app.get("/my-volunteer-requests", async (req, res) => {
+      const userEmail = req.query.email;
+      if (!userEmail) {
+        return res.status(400).send({ message: "email is required" });
+      }
+      const result = await requestCollection
+        .find({ volunteerEmail: userEmail })
+        .toArray();
+      res.send(result);
+    });
     //
     app.post("/volunteers/request", async (req, res) => {
       const { volunteerEmail, volunteerPostId } = req.body;
@@ -79,6 +90,18 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await volunteerCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get volunteer pots added by the logged in user
+    app.get("/my-volunteer-posts", async (req, res) => {
+      const userEmail = req.query.email;
+      if (!userEmail) {
+        return res.status(400).send({ message: "email is required" });
+      }
+      const result = await volunteerCollection
+        .find({ organizerEmail: userEmail })
+        .toArray();
       res.send(result);
     });
     // get all volunteer
