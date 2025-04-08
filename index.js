@@ -3,10 +3,19 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 // middleware
-app.use(cors());
+
+const corsOptions = {
+  origin: [`http://localhost:5173`],
+  credentials: true,
+  optionalSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nugjc.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -16,6 +25,18 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const verifyToken = async (req, res, next) => {
+  const token = req?.cookies?.token;
+  if (!token) return res.status(401).send({ message: "unAuthorize access" });
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unAuthorize access" });
+    }
+    req.user = decoded;
+  });
+  next();
+};
 
 async function run() {
   try {
@@ -29,6 +50,30 @@ async function run() {
       res.send("server is running");
     });
 
+    // jwt
+    app.post("/jwt", async (req, res) => {
+      const email = req.body;
+      const token = jwt.sign(email, process.env.SECRET_KEY, {
+        expiresIn: "365d",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+    // logout
+    app.get("/logout", async (req, res) => {
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
     //
     app.patch("/volunteers/decrease/:id", async (req, res) => {
       const id = req.params.id;
@@ -50,14 +95,27 @@ async function run() {
     });
 
     // get volunteers requests made by the logged in user
-    app.get("/my-volunteer-requests", async (req, res) => {
+    app.get("/my-volunteer-requests", verifyToken, async (req, res) => {
       const userEmail = req.query.email;
+      const decodedEmail = req.user?.email;
+      if (decodedEmail !== userEmail) {
+        return res.status(400).send({ message: "not valid" });
+      }
       if (!userEmail) {
         return res.status(400).send({ message: "email is required" });
       }
       const result = await requestCollection
         .find({ volunteerEmail: userEmail })
         .toArray();
+      res.send(result);
+    });
+
+    // deleted volunteer requested
+    app.delete("/volunteers/request/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await requestCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
     //
@@ -111,6 +169,7 @@ async function run() {
         res.send(result);
       }
     });
+
     // delete data
     app.delete("/volunteer/:id", async (req, res) => {
       const id = req.params.id;
@@ -128,8 +187,15 @@ async function run() {
     });
 
     // get volunteer pots added by the logged in user
-    app.get("/my-volunteer-posts", async (req, res) => {
+    app.get("/my-volunteer-posts", verifyToken, async (req, res) => {
       const userEmail = req.query.email;
+      const decodedEmail = req.user?.email;
+      if (decodedEmail !== userEmail) {
+        return res.status(400).send({ message: "not valid" });
+      }
+      if (!userEmail) {
+        return res.status(400).send({ message: "email is required" });
+      }
       if (!userEmail) {
         return res.status(400).send({ message: "email is required" });
       }
