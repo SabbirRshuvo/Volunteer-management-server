@@ -209,8 +209,12 @@ async function run() {
       res.send(result);
     });
     // get all volunteer
-    app.get("/volunteer", async (req, res) => {
-      const result = await volunteerCollection.find().toArray();
+    app.get("/volunteer", verifyToken, async (req, res) => {
+      const userEmail = req.user.email;
+
+      const result = await volunteerCollection
+        .find({ email: userEmail })
+        .toArray();
       res.send(result);
     });
 
